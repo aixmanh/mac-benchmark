@@ -1,0 +1,18 @@
+# Môi trường Python (tạo bằng ./setup_ai.sh)
+.venv/
+.venv-*/
+__pycache__/
+*.pyc
+
+# Runtime LTX-2.5 (setup_ai.sh tự clone) và file biên dịch / kết quả chạy
+third_party/
+build/
+results/
+
+# Cấu hình riêng của từng máy (chép từ config.example.json)
+config.json
+
+# Ảnh chụp màn hình, file hệ thống
+Ảnh màn hình*.png
+Screenshot*.png
+.DS_Store

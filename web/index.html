@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>M5 Ultra Tests</title>
+<style>
+  :root {
+    --bg: #161616;
+    --panel: #212121;
+    --panel-2: #2a2a2a;
+    --line: #383838;
+    --text: #f2f2f2;
+    --muted: #a3a3a3;
+    --dim: #6f6f6f;
+    --gold: #e5a53a;
+    --gold-ink: #1b1305;
+    --ice: #cfe6ee;
+    --ice-deep: #8cc6da;
+    --ok: #7fd18b;
+    --bad: #ff7a6b;
+    --paper: #efece4;
+    --paper-ink: #1d1d1d;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+    --mono: "SF Mono", ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); }
+  body { padding: 16px; max-width: 1500px; margin: 0 auto; }
+  button { font-family: var(--sans); cursor: pointer; }
+  .panel { background: var(--panel); border: 1px solid var(--line); }
+
+  /* Thanh trên cùng */
+  .top { display: flex; align-items: center; gap: 12px; padding: 14px 16px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 10px; font-size: 26px; font-weight: 800; letter-spacing: .02em; margin-right: auto; }
+  .brand::before { content: ""; width: 10px; height: 32px; background: var(--gold); display: block; }
+  .tabs { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+  .tabs .sep { width: 1px; align-self: stretch; background: var(--line); margin: 2px 4px; }
+  .tab, .chip {
+    background: #1a1a1a; color: var(--text); border: 1px solid var(--line);
+    font-weight: 700; font-size: 12px; letter-spacing: .03em; text-transform: uppercase;
+    padding: 8px 8px;
+  }
+  .tab:hover, .chip:hover { border-color: #5a5a5a; }
+  .tab.on, .chip.on { background: var(--text); color: #111; border-color: var(--text); }
+  .tab .dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--ok); margin-left: 5px; vertical-align: middle; }
+  .actions { display: flex; gap: 8px; }
+  .start {
+    background: var(--gold); color: var(--gold-ink); border: 0; font-weight: 800; font-size: 20px;
+    letter-spacing: .08em; padding: 10px 20px; min-width: 112px;
+  }
+  .start.stop { background: var(--bad); color: #210604; }
+  .all { background: transparent; color: var(--gold); border: 1px solid var(--gold); font-weight: 800; font-size: 12px; letter-spacing: .05em; padding: 10px 10px; }
+  .start:disabled, .all:disabled { opacity: .45; cursor: not-allowed; }
+
+  /* Tuỳ chọn */
+  .opts { margin-top: 10px; padding: 14px 16px; }
+  .descrow { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+  .desc { color: var(--text); font-size: 14px; }
+  .freebox { flex: none; font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; cursor: pointer; white-space: nowrap; }
+  .freebox input { accent-color: var(--gold); margin: 0; }
+  .groups { display: flex; gap: 22px; flex-wrap: wrap; align-items: center; }
+  .group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { font-size: 12px; padding: 7px 12px; }
+  .setup { background: transparent; color: var(--ice-deep); border: 1px dashed var(--ice-deep); font-weight: 700; font-size: 12px; letter-spacing: .06em; padding: 7px 12px; }
+  .note { color: var(--muted); font-size: 12px; }
+
+  /* Bảng máy */
+  .machine { margin-top: 10px; border-top: 4px solid var(--ice); display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); }
+  .m-left { padding: 16px 18px 20px; border-right: 1px solid var(--line); min-width: 0; }
+  .m-right { padding: 16px 18px 20px; display: flex; flex-direction: column; min-width: 0; }
+  .m-right .summary { margin-top: 10px; }
+  .m-charts { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; padding: 14px 18px 18px; border-top: 1px solid var(--line); }
+  .chart { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .m-title { font-size: 34px; font-weight: 800; color: var(--ice); line-height: 1.05; }
+  .m-sub { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .live { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 12px; font-family: var(--mono); font-size: 11px; letter-spacing: .06em; color: var(--dim); text-transform: uppercase; }
+  .live b { color: var(--ice); font-weight: 600; margin-left: 4px; }
+  .live b.hot { color: var(--gold); }
+  .timerow { display: flex; justify-content: space-between; align-items: baseline; margin-top: 22px; }
+  .time { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .status { font-size: 12px; font-weight: 700; letter-spacing: .1em; color: var(--muted); text-transform: uppercase; }
+  .status.run { color: var(--gold); }
+  .status.done { color: var(--ok); }
+  .status.err { color: var(--bad); }
+  .bignum { display: flex; align-items: baseline; gap: 12px; margin-top: 4px; flex-wrap: wrap; }
+  .big { font-size: 96px; font-weight: 800; color: var(--ice); line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  .unit { font-size: 22px; font-weight: 700; color: var(--muted); }
+  .summary { font-size: 14px; margin-top: 10px; }
+  .details { font-size: 13px; color: var(--muted); margin-top: 4px; line-height: 1.5; overflow-wrap: anywhere; }
+  .peaks { font-family: var(--mono); font-size: 11px; color: var(--dim); margin-top: 10px; letter-spacing: .04em; }
+  .bar { height: 6px; background: #111; margin-top: 16px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--gold); }
+  .msg { font-size: 12px; color: var(--muted); margin-top: 6px; min-height: 16px; overflow-wrap: anywhere; }
+  .err-box { color: var(--bad); font-size: 13px; margin-top: 8px; overflow-wrap: anywhere; }
+
+  .chart-head { display: flex; justify-content: space-between; align-items: center; font-size: 11px; letter-spacing: .1em; color: var(--muted); text-transform: uppercase; font-weight: 700; }
+  .legend { display: flex; gap: 12px; font-family: var(--mono); font-weight: 400; letter-spacing: .04em; }
+  .legend span::before { content: ""; display: inline-block; width: 10px; height: 3px; margin-right: 5px; vertical-align: middle; background: var(--c); }
+  canvas { width: 100%; height: 150px; display: block; background: #1a1a1a; border: 1px solid var(--line); }
+  .optrow { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .prompt {
+    flex: 1 1 420px; min-width: 0; background: #151515; color: var(--text); border: 1px solid #4a4a4a;
+    font: 14px var(--sans); padding: 9px 12px; outline: none;
+  }
+  .prompt:focus { border-color: var(--gold); }
+  .prompt::placeholder { color: var(--dim); }
+  .output { margin-top: 16px; display: none; }
+  .output.on { display: block; }
+  .out-prompt { font-size: 12px; color: var(--muted); margin-bottom: 8px; overflow-wrap: anywhere; }
+  .out-prompt b { color: var(--dim); font-weight: 700; letter-spacing: .08em; font-size: 10px; margin-right: 6px; }
+  .out-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+  .out-grid a { display: block; background: #000; border: 1px solid var(--line); }
+  .out-grid img { width: 100%; display: block; aspect-ratio: 1; object-fit: cover; }
+  .out-audio { width: 100%; display: block; }
+  .out-media { width: 100%; display: block; background: #000; border: 1px solid var(--line); max-height: 420px; object-fit: contain; }
+  .out-text {
+    background: #171717; border: 1px solid var(--line); padding: 12px 14px; font-size: 14px; line-height: 1.55;
+    white-space: pre-wrap; overflow-wrap: anywhere; max-height: 400px; overflow: auto;
+  }
+  .out-text.live::after { content: "▍"; color: var(--gold); animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* Bảng điểm */
+  .score { margin-top: 10px; background: var(--paper); color: var(--paper-ink); padding: 14px 18px 16px; }
+  .score h2, .log h2 { margin: 0; font-size: 13px; letter-spacing: .14em; font-weight: 800; text-transform: uppercase; }
+  .score-line { font-size: 22px; font-weight: 800; margin-top: 6px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; margin-top: 12px; }
+  .tile { background: #fff; border: 1px solid #d8d3c6; padding: 10px 12px; cursor: pointer; text-align: left; color: var(--paper-ink); }
+  .tile:hover { border-color: #9a9480; }
+  .tile .k { font-size: 10px; letter-spacing: .1em; font-weight: 800; color: #6b665a; text-transform: uppercase; }
+  .tile .v { font-size: 24px; font-weight: 800; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .tile .u { font-size: 11px; color: #6b665a; font-weight: 600; }
+  .tile .b { font-size: 10px; color: #8b8676; margin-top: 2px; }
+
+  .log { margin-top: 10px; padding: 12px 16px 14px; }
+  .log-head { display: flex; justify-content: space-between; align-items: center; }
+  .clear { background: none; border: 0; color: var(--dim); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+  .log ul { list-style: none; margin: 8px 0 0; padding: 0; font-size: 13px; line-height: 1.6; max-height: 260px; overflow: auto; }
+  .log li { color: var(--text); }
+  .log li em { color: var(--dim); font-style: normal; }
+
+  @media (max-width: 900px) {
+    .machine { grid-template-columns: 1fr; }
+    .m-left { border-right: 0; border-bottom: 1px solid var(--line); }
+    .m-charts { grid-template-columns: 1fr; }
+    .big { font-size: 64px; }
+    .start { min-width: 0; padding: 10px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="panel top">
+  <div class="brand">TESTS</div>
+  <div class="tabs" id="tabs"></div>
+  <div class="actions">
+    <button class="all" id="allBtn" title="Chạy lần lượt mọi bài test với tuỳ chọn mặc định">CHẠY TẤT CẢ</button>
+    <button class="start" id="startBtn">START</button>
+  </div>
+</div>
+
+<div class="panel opts">
+  <div class="descrow">
+    <div class="desc" id="desc"></div>
+    <label class="freebox" title="Mỗi lần bấm START: tắt các mô hình chạy nền (danh sách trong config.json), server mô hình chạy tay và Docker Desktop, để bài test có toàn bộ RAM">
+      <input type="checkbox" id="freeToggle" checked> Tắt mô hình nền &amp; Docker khi START
+    </label>
+  </div>
+  <div class="optrow">
+    <input class="prompt" id="prompt" type="text" autocomplete="off" spellcheck="false" style="display:none">
+    <div class="groups" id="groups"></div>
+  </div>
+</div>
+
+<div class="panel machine">
+  <div class="m-left">
+    <div class="m-title" id="mTitle">Apple Silicon</div>
+    <div class="m-sub" id="mSub"></div>
+    <div class="live" id="live"></div>
+    <div class="timerow"><div class="time" id="time">—</div><div class="status" id="status">SẴN SÀNG</div></div>
+    <div class="bignum"><div class="big" id="big">—</div><div class="unit" id="unit"></div></div>
+    <div class="bar"><i id="barFill"></i></div>
+    <div class="msg" id="msg"></div>
+    <div class="err-box" id="err"></div>
+  </div>
+  <div class="m-right">
+    <div class="chart-head"><span>Chi tiết kết quả</span></div>
+    <div class="summary" id="summary">Chọn bài test rồi bấm START.</div>
+    <div class="details" id="details"></div>
+    <div class="peaks" id="peaks"></div>
+    <div class="output" id="output"></div>
+  </div>
+  <div class="m-charts">
+    <div class="chart">
+      <div class="chart-head">
+        <span>Công suất trực tiếp (W)</span>
+        <span class="legend"><span style="--c: var(--gold)" id="lgCpu">SOC</span><span style="--c: var(--ice-deep)">GPU</span><span style="--c: #8a8a8a">TOÀN MÁY</span></span>
+      </div>
+      <canvas id="chartW"></canvas>
+    </div>
+    <div class="chart">
+      <div class="chart-head">
+        <span>Mức sử dụng (%)</span>
+        <span class="legend"><span style="--c: var(--gold)">CPU</span><span style="--c: var(--ice-deep)">GPU</span></span>
+      </div>
+      <canvas id="chartU"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="score">
+  <h2>Bảng điểm</h2>
+  <div class="score-line" id="scoreLine">Chưa có kết quả nào. Bấm START hoặc CHẠY TẤT CẢ.</div>
+  <div class="tiles" id="tiles"></div>
+</div>
+
+<div class="panel log">
+  <div class="log-head"><h2>Nhật ký kết quả</h2><button class="clear" id="clearBtn">Xoá lịch sử</button></div>
+  <ul id="log"></ul>
+</div>
+
+<script>
+const TESTS = [
+  { id: "llm", name: "LLM", ai: true, prompt: "Để trống = prompt mẫu ~1.300 token. Gõ câu hỏi của bạn rồi bấm Enter…",
+    groups: [{ key: "model", def: "llama3b", choices: [["llama3b", "Llama 3.2 3B"], ["qwen8b", "Qwen3 8B"], ["qwen27b", "Qwen3.8 27B"]] }],
+    desc: o => `Chạy mô hình ngôn ngữ cục bộ trên MLX, sinh 512 token — đo tốc độ token/giây. Lần đầu sẽ tải model.` },
+  { id: "transcribe", name: "Transcribe", ai: true,
+    groups: [{ key: "minutes", def: "13.8", choices: [["1", "1 min"], ["5", "5 min"], ["13.8", "13.8 min"]] },
+             { key: "model", def: "small", choices: [["large-v3", "Large-v3"], ["turbo", "Turbo"], ["medium", "Medium"], ["small", "Small"], ["base", "Base"], ["tiny", "Tiny"]] }],
+    desc: o => `Chuyển ${o.minutes} phút âm thanh thành văn bản bằng Whisper ${o.model} trên MLX.` },
+  { id: "tts", name: "TTS", ai: true, download: "0.4–2.5 GB", prompt: "Để trống = đoạn văn mẫu ~30 giây. Gõ câu cần đọc rồi bấm Enter (VieNeu đọc tiếng Việt, hai model kia đọc tiếng Anh)…",
+    groups: [{ key: "model", def: "vieneu", choices: [["vieneu", "VieNeu (tiếng Việt)"], ["kokoro", "Kokoro 82M"], ["qwen3", "Qwen3-TTS 1.7B"]] }],
+    desc: o => ({
+      vieneu: "Đọc tiếng Việt bằng VieNeu-TTS v3 Turbo (giọng Mai Anh, ONNX chạy trên CPU)",
+      kokoro: "Đọc tiếng Anh bằng Kokoro 82M (giọng af_heart) trên MLX",
+      qwen3: "Đọc tiếng Anh bằng Qwen3-TTS 1.7B (8-bit, giọng Ryan) trên MLX",
+    })[o.model] + " — đo nhanh gấp bao nhiêu lần thời gian thực." },
+  { id: "image", name: "Image", ai: true, download: "~16 GB", prompt: "Để trống = 4 prompt mẫu. Mô tả bức ảnh bạn muốn tạo rồi bấm Enter…",
+    groups: [{ key: "size", def: "1024", choices: [["512", "512×512"], ["1024", "1024×1024"], ["2048", "2048×2048"]] },
+             { key: "quant", def: "bf16", choices: [["bf16", "BF16"], ["q8", "8-bit"], ["q4", "4-bit"]] }],
+    desc: o => `Tạo 4 ảnh ${o.size}×${o.size} bằng FLUX.2 klein 4B (${o.quant.toUpperCase()}, 4 bước) trên MLX — đo giây/ảnh.` },
+  { id: "video", name: "Video", ai: true, download: "~45 GB", prompt: "Để trống = cảnh cáo đi trong rừng tuyết. Mô tả đoạn video rồi bấm Enter…",
+    groups: [{ key: "res", def: "512", choices: [["512", "768×512"], ["720", "1280×704"]] },
+             { key: "seconds", def: "5", choices: [["2", "2 giây"], ["5", "5 giây"]] },
+             { key: "source", def: "t2v", choices: [["t2v", "Từ đầu"], ["i2v", "Từ ảnh cuối"]] }],
+    desc: o => `Tạo ${o.seconds} giây video ${o.res === "720" ? "1280×704" : "768×512"} 24 fps kèm âm thanh bằng LTX-2.5 distilled (DiT int8) trên MLX`
+      + (o.source === "i2v" ? ", lấy ảnh cuối của bài IMAGE làm khung hình đầu." : ".") },
+  { id: "cpu", name: "CPU", groups: [{ key: "mode", def: "multi", choices: [["single", "Đơn nhân"], ["multi", "Đa nhân"]] }],
+    desc: o => o.mode === "single" ? "Tính tập Mandelbrot (số thực Double) trên 1 nhân — đo tốc độ đơn nhân."
+                                   : "Tính tập Mandelbrot (số thực Double) trên mọi nhân — đo tốc độ đa nhân." },
+  { id: "gpu", name: "GPU", groups: [{ key: "mode", def: "fp32", choices: [["fp32", "FP32"], ["fp16", "FP16"]] }],
+    desc: o => `Nhân ma trận 8192×8192 ${o.mode.toUpperCase()} bằng Metal Performance Shaders — đo sức tính toán GPU.` },
+  { id: "draw", name: "Draw", groups: [{ key: "mode", def: "4k", choices: [["1080p", "1080p"], ["4k", "4K"], ["8k", "8K"]] }],
+    desc: o => `Render thiên hà 150.000 hạt phát sáng ở ${o.mode.toUpperCase()} bằng Metal trong 6 giây — đo tốc độ đồ hoạ.` },
+  { id: "hevc", name: "HEVC", groups: [{ key: "mode", def: "4k", choices: [["4k", "4K60"], ["8k", "8K60"], ["4k-x4", "4K × 4 luồng"]] }],
+    desc: o => `Mã hoá video HEVC ${o.mode === "8k" ? "8K" : "4K"} bằng media engine${o.mode.includes("x4") ? ", 4 luồng song song" : ""}.` },
+  { id: "prores", name: "ProRes", groups: [{ key: "mode", def: "422hq", choices: [["422hq", "422 HQ 4K"], ["4444", "4444 4K"], ["422hq-8k", "422 HQ 8K"], ["422hq-x4", "422 HQ × 4 luồng"]] }],
+    desc: o => `Mã hoá video ProRes ${o.mode.startsWith("4444") ? "4444" : "422 HQ"} ${o.mode.includes("8k") ? "8K" : "4K"} bằng bộ tăng tốc ProRes${o.mode.includes("x4") ? ", 4 luồng song song" : ""}.` },
+  { id: "memory", name: "Memory", groups: [{ key: "mode", def: "gpu", choices: [["cpu", "Từ CPU"], ["gpu", "Từ GPU"]] }],
+    desc: o => `Sao chép 4 GB trong RAM hợp nhất từ ${o.mode.toUpperCase()} — đo băng thông bộ nhớ.` },
+  { id: "ssd", name: "SSD", groups: [{ key: "mode", def: "16", choices: [["8", "8 GB"], ["16", "16 GB"], ["32", "32 GB"]] }],
+    desc: o => `Ghi rồi đọc tuần tự ${o.mode} GB trên SSD nội bộ (bỏ qua bộ nhớ đệm). File tạm được xoá sau khi xong.` },
+];
+const RUN_ALL = [
+  ["cpu", { mode: "single" }], ["cpu", { mode: "multi" }], ["gpu", { mode: "fp32" }], ["gpu", { mode: "fp16" }],
+  ["draw", { mode: "4k" }], ["hevc", { mode: "4k" }], ["prores", { mode: "422hq" }],
+  ["memory", { mode: "cpu" }], ["memory", { mode: "gpu" }], ["ssd", { mode: "16" }],
+  ["transcribe", { minutes: "13.8", model: "small" }, true], ["llm", { model: "llama3b" }, true],
+  ["tts", { model: "kokoro" }, true],
+  ["image", { size: "1024", quant: "bf16" }, true], ["video", { res: "512", seconds: "5", source: "t2v" }, true],
+];
+
+const $ = id => document.getElementById(id);
+const state = { tab: "llm", opts: {}, info: {}, job: null, history: [], queue: [], series: [], pollTimer: null };
+TESTS.forEach(t => { state.opts[t.id] = Object.fromEntries(t.groups.map(g => [g.key, g.def])); });
+state.prompts = (() => { try { return JSON.parse(localStorage.getItem("m5tests.prompts")) || {}; } catch (e) { return {}; } })();
+try { $("freeToggle").checked = localStorage.getItem("m5tests.free") !== "0"; } catch (e) { /* bỏ qua */ }
+$("freeToggle").addEventListener("change", e => {
+  try { localStorage.setItem("m5tests.free", e.target.checked ? "1" : "0"); } catch (err) { /* bỏ qua */ }
+});
+function savePrompts() { try { localStorage.setItem("m5tests.prompts", JSON.stringify(state.prompts)); } catch (e) { /* bỏ qua */ } }
+
+function testById(id) { return TESTS.find(t => t.id === id); }
+function optLabel(test, opts) {
+  const t = testById(test);
+  if (!t) return test;
+  return t.groups.map(g => (g.choices.find(c => c[0] === opts[g.key]) || [, opts[g.key]])[1]).filter(Boolean).join(" · ");
+}
+function key(test, opts) { return test + ":" + JSON.stringify(opts); }
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+async function api(path, body) {
+  const r = await fetch(path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {});
+  const data = await r.json().catch(() => null);
+  if (!r.ok) throw new Error((data && data.error) || r.statusText);
+  return data;
+}
+
+/* ---------- Vẽ tab & tuỳ chọn ---------- */
+function renderTabs() {
+  const done = new Set(state.history.map(h => h.test));
+  $("tabs").innerHTML = TESTS.map((t, i) =>
+    (i > 0 && TESTS[i - 1].ai && !t.ai ? '<span class="sep"></span>' : "") +
+    `<button class="tab ${t.id === state.tab ? "on" : ""}" data-tab="${t.id}">${t.name}${done.has(t.id) ? '<span class="dot"></span>' : ""}</button>`).join("");
+}
+function renderOpts() {
+  const t = testById(state.tab), o = state.opts[t.id];
+  $("desc").textContent = t.desc(o);
+  let html = t.groups.map(g => `<div class="group">${g.choices.map(([v, l]) =>
+    `<button class="chip ${o[g.key] === v ? "on" : ""}" data-key="${g.key}" data-val="${v}">${l}</button>`).join("")}</div>`).join("");
+  if (t.ai && !(state.info.ai || {})[t.id]) {
+    html += `<button class="setup" id="setupBtn">CÀI ĐẶT AI (MLX)</button><span class="note">Cần cài một lần (~1 GB thư viện) trước khi chạy bài test AI.</span>`;
+  }
+  if (t.ai) html += `<span class="note">Lần đầu dùng model sẽ phải tải về (${t.download || "từ 0.1 GB tới 40 GB"}).</span>`;
+  $("groups").innerHTML = html;
+  const inp = $("prompt");
+  if (t.prompt) {
+    inp.style.display = "";
+    inp.placeholder = t.prompt;
+    if (inp.dataset.tab !== t.id) { inp.value = state.prompts[t.id] || ""; inp.dataset.tab = t.id; }
+  } else {
+    inp.style.display = "none"; inp.dataset.tab = "";
+  }
+}
+$("prompt").addEventListener("input", e => { state.prompts[state.tab] = e.target.value; savePrompts(); });
+$("prompt").addEventListener("keydown", e => {
+  if (e.key === "Enter" && !(state.job && state.job.status === "running")) { e.preventDefault(); $("startBtn").click(); }
+});
+$("tabs").addEventListener("click", e => {
+  const b = e.target.closest("[data-tab]"); if (!b) return;
+  state.tab = b.dataset.tab; renderTabs(); renderOpts(); showLatestFor(state.tab, state.opts[state.tab]);
+});
+$("groups").addEventListener("click", e => {
+  if (e.target.id === "setupBtn") return runJob("setup", {}, "Cài đặt AI");
+  const b = e.target.closest("[data-key]"); if (!b) return;
+  state.opts[state.tab][b.dataset.key] = b.dataset.val; renderOpts(); showLatestFor(state.tab, state.opts[state.tab]);
+});
+
+/* ---------- Thông tin máy & thông số trực tiếp ---------- */
+async function loadInfo() {
+  state.info = await api("/api/info");
+  const i = state.info;
+  const chip = (i.chip || "Apple Silicon").replace(/^Apple\s+/, "");
+  $("mTitle").textContent = `${chip} ${i.ram_gb}GB`;
+  const levels = (i.core_levels || []).map(l => `${l.cores} ${l.name}`).join(" + ");
+  $("mSub").textContent = `${i.cpu_cores} nhân CPU (${levels}) · ${i.gpu_cores} nhân GPU · ${i.ram_gb} GB RAM · macOS ${i.macos} · ${i.model}`;
+  renderOpts();
+}
+function fmtW(v) { return v == null || v < 0 ? "—" : v.toFixed(1) + " W"; }
+function fmtT(v) { return v == null || v < 0 ? "—" : Math.round(v) + " °C"; }
+async function pollStats() {
+  try {
+    const s = await api("/api/stats");
+    if (s && s.cpu != null) {
+      const hot = v => v > 50 ? "hot" : "";
+      $("live").innerHTML = [
+        ["GPU", `<b class="${hot(s.gpu)}">${Math.round(s.gpu)}%</b>`],
+        ["GPU power", `<b>${fmtW(s.gpu_w)}</b>`],
+        ["CPU", `<b class="${hot(s.cpu)}">${Math.round(s.cpu)}%</b>`],
+        s.cpu_w >= 0 ? ["CPU power", `<b>${fmtW(s.cpu_w)}</b>`]
+                     : ['<span title="Công suất toàn bộ chip (CPU + GPU + Neural Engine + bộ nhớ đệm). macOS không cho đọc riêng công suất CPU nếu không có quyền root.">SoC power</span>', `<b>${fmtW(s.soc_w)}</b>`],
+        ["RAM", `<b>${s.ram.toFixed(1)} / ${s.ram_total.toFixed(0)} GB</b>`],
+        ["Neural engine", `<b>${fmtW(s.ane_w)}</b>`],
+        ["CPU temp", `<b>${fmtT(s.cpu_temp)}</b>`],
+        ["GPU temp", `<b>${fmtT(s.gpu_temp)}</b>`],
+        ["Toàn máy", `<b>${fmtW(s.sys_w)}</b>`],
+      ].map(([k, v]) => `<span>${k}${v}</span>`).join("");
+      state.series.push(s);
+      if (state.series.length > 240) state.series.shift();
+      drawCharts();
+    }
+  } catch (e) { /* server tạm không phản hồi */ }
+}
+
+function drawChart(canvas, lines, fixedMax) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== w * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  const data = state.series, n = 240;
+  let max = fixedMax || 10;
+  if (!fixedMax) for (const s of data) for (const l of lines) max = Math.max(max, s[l.k] || 0);
+  if (!fixedMax) max = Math.ceil(max / 10) * 10;
+  ctx.strokeStyle = "#2c2c2c"; ctx.lineWidth = 1; ctx.fillStyle = "#6f6f6f"; ctx.font = "10px ui-monospace, Menlo, monospace";
+  for (let g = 0; g <= 4; g++) {
+    const y = 6 + (h - 12) * g / 4;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    ctx.fillText(Math.round(max * (1 - g / 4)), 4, y + (g === 0 ? 10 : -3));
+  }
+  for (const l of lines) {
+    ctx.strokeStyle = l.c; ctx.lineWidth = 2; ctx.beginPath();
+    data.forEach((s, i) => {
+      const v = Math.max(0, s[l.k] || 0);
+      const x = w - (data.length - 1 - i) * (w / (n - 1));
+      const y = 6 + (h - 12) * (1 - Math.min(v, max) / max);
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+    });
+    ctx.stroke();
+  }
+}
+function drawCharts() {
+  const css = getComputedStyle(document.documentElement);
+  const gold = css.getPropertyValue("--gold").trim(), ice = css.getPropertyValue("--ice-deep").trim();
+  const last = state.series[state.series.length - 1] || {};
+  const cpuKey = last.cpu_w >= 0 ? "cpu_w" : "soc_w";
+  $("lgCpu").textContent = cpuKey === "cpu_w" ? "CPU" : "SOC";
+  drawChart($("chartW"), [{ k: "sys_w", c: "#8a8a8a" }, { k: cpuKey, c: gold }, { k: "gpu_w", c: ice }]);
+  drawChart($("chartU"), [{ k: "cpu", c: gold }, { k: "gpu", c: ice }], 100);
+}
+
+/* ---------- Kết quả ---------- */
+function showResult(test, opts, res, extra = {}) {
+  $("time").textContent = res ? res.seconds.toFixed(2) + "s" : "—";
+  $("big").textContent = res ? res.big : "—";
+  $("unit").textContent = res ? res.unit : "";
+  $("summary").textContent = res ? res.summary : `${testById(test)?.name || test} · ${optLabel(test, opts)}: chưa chạy.`;
+  $("details").innerHTML = res ? res.details.map(esc).join("<br>") : "";
+  const p = extra.peak || {}, a = extra.avg || {};
+  $("peaks").textContent = res && p.sys_w != null
+    ? `ĐỈNH: ${p.cpu_w > 0 ? "CPU " + fmtW(p.cpu_w) : "SOC " + fmtW(p.soc_w)} · GPU ${fmtW(p.gpu_w)} · ANE ${fmtW(p.ane_w)} · TOÀN MÁY ${fmtW(p.sys_w)} · CPU ${fmtT(p.cpu_temp)} · GPU ${fmtT(p.gpu_temp)}  |  TB: CPU ${Math.round(a.cpu || 0)}% · GPU ${Math.round(a.gpu || 0)}%`
+    : "";
+  renderOutput(res);
+}
+function fileUrl(res, name) { return (res.base || "/preview/") + name; }
+/* Khung kết quả bên dưới số liệu: ảnh, video, hoặc chữ LLM trả về */
+function renderOutput(res, live) {
+  const out = $("output");
+  const old = out.querySelector("video, audio");
+  if (old) old.pause();
+  let html = "";
+  if (res && res.prompt) html += `<div class="out-prompt"><b>PROMPT</b>${esc(res.prompt)}</div>`;
+  if (live != null) {
+    html += `<div class="out-text live">${esc(live)}</div>`;
+  } else if (res && res.text != null) {
+    html += `<div class="out-text">${esc(res.text)}</div>`;
+  } else if (res && res.images) {
+    html += `<div class="out-grid">${res.images.map(n =>
+      `<a href="${fileUrl(res, n)}" target="_blank"><img src="${fileUrl(res, n)}" alt=""></a>`).join("")}</div>`;
+  } else if (res && res.audio) {
+    html += `<audio class="out-audio" controls src="${fileUrl(res, res.audio)}"></audio>`;
+  } else if (res && res.video) {
+    const poster = res.poster || res.preview;
+    html += `<video class="out-media" controls loop playsinline src="${fileUrl(res, res.video)}"${poster ? ` poster="${fileUrl(res, poster)}"` : ""}></video>`;
+  } else if (res && res.preview) {
+    html += `<img class="out-media" src="${fileUrl(res, res.preview)}" alt="">`;
+  }
+  out.innerHTML = html;
+  out.classList.toggle("on", !!html);
+  const box = out.querySelector(".out-text.live");
+  if (box) box.scrollTop = box.scrollHeight;
+}
+function showLatestFor(test, opts) {
+  if (state.job && state.job.status === "running") return;
+  const k = key(test, opts);
+  const h = [...state.history].reverse().find(x => key(x.test, x.opts) === k);
+  setStatus(h ? "done" : "", h ? `XONG · ${h.time.slice(11, 16)}` : "SẴN SÀNG");
+  $("barFill").style.width = h ? "100%" : "0";
+  $("msg").textContent = ""; $("err").textContent = "";
+  showResult(test, opts, h && h.result, h || {});
+}
+function setStatus(cls, text) { const s = $("status"); s.className = "status " + (cls || ""); s.textContent = text; }
+
+function renderHistory() {
+  const latest = new Map(), best = new Map();
+  for (const h of state.history) {
+    const k = key(h.test, h.opts);
+    latest.set(k, h);
+    if (!best.has(k) || h.result.metric > best.get(k).result.metric) best.set(k, h);
+  }
+  const order = TESTS.map(t => t.id);
+  const items = [...latest.values()].sort((a, b) => order.indexOf(a.test) - order.indexOf(b.test));
+  const chip = state.info.chip ? state.info.chip.replace(/^Apple\s+/, "") : "Máy này";
+  if (items.length) {
+    const total = items.reduce((s, h) => s + h.result.seconds, 0);
+    $("scoreLine").textContent = `${chip} ${state.info.ram_gb || ""}GB đã hoàn thành ${items.length} bài test (tổng ${total.toFixed(1)} s chạy).`;
+  }
+  $("tiles").innerHTML = items.map(h => {
+    const b = best.get(key(h.test, h.opts));
+    const showBest = b !== h ? `<div class="b">Tốt nhất: ${esc(b.result.big)}</div>` : "";
+    return `<button class="tile" data-test="${h.test}" data-opts='${esc(JSON.stringify(h.opts))}'>
+      <div class="k">${esc(testById(h.test)?.name || h.test)} · ${esc(optLabel(h.test, h.opts))}</div>
+      <div class="v">${esc(h.result.big)} <span class="u">${esc(h.result.unit)}</span></div>${showBest}</button>`;
+  }).join("");
+  $("log").innerHTML = [...state.history].reverse().map(h =>
+    `<li><em>${esc(h.time)}</em> — ${esc((testById(h.test)?.name || h.test).toUpperCase())} (${esc(optLabel(h.test, h.opts))}): ${esc(chip)} ${esc(h.result.big)} ${esc(h.result.unit)} trong ${h.result.seconds.toFixed(2)}s. <em>${esc(h.result.summary)}</em></li>`).join("")
+    || `<li><em>Chưa có kết quả.</em></li>`;
+  renderTabs();
+}
+$("tiles").addEventListener("click", e => {
+  const b = e.target.closest(".tile"); if (!b) return;
+  state.tab = b.dataset.test; state.opts[state.tab] = { ...state.opts[state.tab], ...JSON.parse(b.dataset.opts) };
+  renderTabs(); renderOpts(); showLatestFor(state.tab, state.opts[state.tab]);
+});
+$("clearBtn").addEventListener("click", async () => {
+  if (!confirm("Xoá toàn bộ lịch sử kết quả?")) return;
+  await api("/api/history/clear", {}); state.history = []; renderHistory();
+  $("scoreLine").textContent = "Chưa có kết quả nào. Bấm START hoặc CHẠY TẤT CẢ.";
+  showLatestFor(state.tab, state.opts[state.tab]);
+});
+
+/* ---------- Chạy test ---------- */
+function setRunning(on) {
+  const b = $("startBtn");
+  b.textContent = on ? "STOP" : "START"; b.classList.toggle("stop", on);
+  $("allBtn").disabled = on;
+}
+async function runJob(test, opts, label, prompt = "") {
+  $("err").textContent = "";
+  try {
+    state.job = await api("/api/run", { test, opts, label, prompt, free: $("freeToggle").checked });
+  } catch (e) {
+    $("err").textContent = e.message; state.queue = []; return false;
+  }
+  if (test !== "setup") { state.tab = test; renderTabs(); renderOpts(); }
+  setRunning(true);
+  setStatus("run", "ĐANG CHẠY");
+  $("big").textContent = "…"; $("unit").textContent = "";
+  $("summary").textContent = label || test; $("details").textContent = ""; $("peaks").textContent = "";
+  renderOutput(prompt ? { prompt } : null, test === "llm" ? "" : null);
+  pollJob();
+  return true;
+}
+async function pollJob() {
+  clearTimeout(state.pollTimer);
+  let j;
+  try { j = await api("/api/job"); } catch (e) { state.pollTimer = setTimeout(pollJob, 1000); return; }
+  if (!j) return;
+  state.job = j;
+  $("barFill").style.width = Math.round(j.progress * 100) + "%";
+  $("msg").textContent = j.message || "";
+  if (j.status === "running") {
+    $("time").textContent = j.elapsed.toFixed(1) + "s";
+    if (j.test === "llm") renderOutput(j.prompt ? { prompt: j.prompt } : null, j.stream || "");
+    state.pollTimer = setTimeout(pollJob, 400);
+    return;
+  }
+  setRunning(false);
+  if (j.freed && j.freed.length) $("msg").textContent = "Đã tắt trước khi chạy: " + j.freed.join(", ");
+  if (j.status === "done") {
+    if (j.test === "setup") {
+      setStatus("done", "ĐÃ CÀI XONG"); $("summary").textContent = "Môi trường AI đã sẵn sàng.";
+      await loadInfo();
+    } else {
+      setStatus("done", "XONG");
+      showResult(j.test, j.opts, j.result, j);
+      state.history = await api("/api/history"); renderHistory();
+    }
+  } else {
+    setStatus(j.status === "cancelled" ? "" : "err", j.status === "cancelled" ? "ĐÃ HUỶ" : "LỖI");
+    $("err").textContent = j.error || ""; $("big").textContent = "—";
+    if (j.status === "cancelled") state.queue = [];
+  }
+  if (state.queue.length) {
+    const [test, opts] = state.queue.shift();
+    setTimeout(() => runJob(test, opts, `${testById(test).name} · ${optLabel(test, opts)}`), 1500);
+  }
+}
+$("startBtn").addEventListener("click", async () => {
+  if (state.job && state.job.status === "running") { state.queue = []; await api("/api/cancel", {}); return; }
+  const t = state.tab, o = { ...state.opts[t] };
+  const prompt = testById(t).prompt ? ($("prompt").value || "").trim() : "";
+  runJob(t, o, `${testById(t).name} · ${optLabel(t, o)}`, prompt);
+});
+$("allBtn").addEventListener("click", () => {
+  state.queue = RUN_ALL.filter(([t, , ai]) => !ai || (state.info.ai || {})[t]).map(([t, o]) => [t, o]);
+  const [test, opts] = state.queue.shift();
+  runJob(test, opts, `${testById(test).name} · ${optLabel(test, opts)}`);
+});
+
+/* ---------- Khởi động ---------- */
+(async function init() {
+  renderTabs(); renderOpts();
+  await loadInfo().catch(() => {});
+  state.history = await api("/api/history").catch(() => []);
+  renderHistory();
+  const j = await api("/api/job").catch(() => null);
+  if (j && testById(j.test)) {
+    state.tab = j.test; state.opts[j.test] = { ...state.opts[j.test], ...j.opts };
+    renderTabs(); renderOpts();
+  }
+  if (j && j.status === "running") {
+    state.job = j; setRunning(true); setStatus("run", "ĐANG CHẠY");
+    $("big").textContent = "…"; $("unit").textContent = ""; $("summary").textContent = j.label || j.test;
+    pollJob();
+  } else showLatestFor(state.tab, state.opts[state.tab]);
+  pollStats(); setInterval(pollStats, 1000);
+  window.addEventListener("resize", drawCharts);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "free_before_test": {
+    "launchd": [],
+    "docker": false,
+    "kill_patterns": [
+      "mlx_lm.server",
+      "llama-server",
+      "ollama"
+    ]
+  }
+}
